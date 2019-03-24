@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Chat App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+
+        }
+
+        ul {
+            word-wrap: break-word;
+            list-style: none;
+        }
+
+        body {
+            background-color: #113f67;
+        }
+
+        #loginpage {
+            /* display: none; */
+        }
+
+        .form {
+            width: 50%;
+            height: 50%;
+
+            background-color: #38598b;
+            color: #ffffff;
+
+            font-size: 4vw;
+            font-family: -apple-system, 'Segoe UI', 'Open Sans', sans-serif;
+
+            position: absolute;
+            margin: auto;
+            padding: 5%;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 10px;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #username_input {
+            background-color: #38598b;
+            color: white;
+
+            border: none;
+            border-radius: 0;
+            border-bottom: 1px solid white;
+            width: 45%;
+            text-align: center;
+
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 2.8vw;
+
+            outline: none;
+
+        }
+
+        #chatpage {
+            display: none;
+            color: white;
+            background-color: #38598b;
+            width: 60%;
+            height: 60%;
+
+            color: #ffffff;
+
+            font-size: 2vw;
+            font-family: -apple-system, 'Segoe UI', 'Open Sans', sans-serif;
+
+            position: absolute;
+            margin: auto;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 3px;
+
+        }
+
+
+        #messages {
+            overflow-y: scroll;
+            height: 55vh;
+            padding-left: 2%;
+            padding-top: 2%;
+        }
+
+        #input_msg {
+            width: 100%;
+            border-radius: 3px;
+            border: none;
+
+            text-align: center;
+            font-size: 2vw;
+
+        }
+
+        .username {
+            font-weight: bold;
+            color: white;
+            text-transform: capitalize;
+        }
+
+        .welcome {
+            text-align: center;
+            font-size: 2.3vw;
+            color: #ffd6d6;
+            font-weight: 600;
+
+        }
+
+        .userJoined {
+            text-align: center;
+            font-size: 2.3vw;
+            color: #abfaa0;
+            font-weight: 400;
+        }
+
+        .userLeft {
+            text-align: center;
+            font-size: 2.3vw;
+            color: #faa0a0;
+            font-weight: 400;
+        }
+
+        .typing {
+            font-size: 2vw;
+            color: rgb(255, 247, 131);
+            font-weight: 200;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pages">
+        <div id="chatpage">
+            <div id="chatArea">
+                <ul id="messages">
+                </ul>
+            </div>
+            <div id="inputDiv">
+                <input type="text" id="input_msg" placeholder="Type a message">
+            </div>
+        </div>
+
+        <div id="loginpage">
+            <div class="form">
+                <h3 class="title">Enter your Username:</h3><br>
+                <input id="username_input" type="text" maxlength="14">
+            </div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        (function () {
+            var loginPage = document.getElementById('loginpage');
+            var usernameInput = document.getElementById('username_input');
+            var chatPage = document.getElementById('chatpage');
+            var inputMsg = document.getElementById('input_msg');
+            var messageUl = document.getElementById('messages');
+
+
+            var username;
+            var connected = false;
+
+
+            // Register with a username to Server
+            usernameInput.addEventListener('keydown', function (e) {
+                if (usernameInput.value) {
+                    if (e.keyCode === 13) {
+                        connected = true;
+                        username = usernameInput.value;
+
+                        loginPage.style.display = 'none';
+                        chatPage.style.display = 'block';
+                        //Tell server your username
+                        socket.emit('add user', username);
+                    }
+
+                }
+            });
+
+            //Display Chat Message in the ChatBox
+            const addChatMessage = (data) => {
+                var usernameSpan = document.createElement("span");
+                var messageSpan = document.createElement("span");
+                var userMessageSpan = document.createElement("span");
+                var li = document.createElement("li");
+
+                usernameSpan.setAttribute('class', 'username');
+
+                usernameSpan.innerHTML = data.username;
+                messageSpan.innerHTML = data.message;
+                userMessageSpan.appendChild(usernameSpan);
+                userMessageSpan.innerHTML += ' : ';
+                userMessageSpan.appendChild(messageSpan);
+                
+                li.appendChild(userMessageSpan);
+                messageUl.appendChild(li);
+                messageUl.scrollTop = messageUl.scrollHeight;
+
+            }
+
+            //Display Welcome Message when Registered
+            const welcome = (data) => {
+                var welcomeDiv = document.createElement("div");
+                var numOnlinePeopleSpan = document.createElement("span");
+                var li = document.createElement("li");
+
+                welcomeDiv.innerHTML = "Welcome to The Chat room!<br>";
+                numOnlinePeopleSpan.innerHTML = data + ' People Online.';
+                welcomeDiv.appendChild(numOnlinePeopleSpan);
+                li.appendChild(welcomeDiv);
+
+                li.setAttribute('class', 'welcome');
+                messageUl.appendChild(li);
+
+            }
+
+            
+            const userJoined = (data) => {
+                if (connected) {
+
+                    var li = document.createElement("li");
+                    var usernameSpan = document.createElement("span");
+                    var numOnlinePeopleSpan = document.createElement("span");
+                    var userJoinedDiv = document.createElement("div");
+
+                    usernameSpan.innerHTML = data.username + ' has Joined!<br>';
+                    numOnlinePeopleSpan.innerHTML = data.numUsers + ' People Online.';
+
+                    userJoinedDiv.appendChild(usernameSpan);
+                    userJoinedDiv.appendChild(numOnlinePeopleSpan);
+
+                    li.setAttribute('class', 'userJoined');
+                    li.appendChild(userJoinedDiv);
+                    messageUl.appendChild(li);
+                    messageUl.scrollTop = messageUl.scrollHeight;
+
+                }
+            }
+
+            const userLeft = (data) => {
+                if (connected) {
+
+                    var li = document.createElement("li");
+                    var usernameSpan = document.createElement("span");
+                    var numOnlinePeopleSpan = document.createElement("span");
+                    var userLeftDiv = document.createElement("div");
+
+                    usernameSpan.innerHTML = data.username + ' Left!<br>';
+                    numOnlinePeopleSpan.innerHTML = data.numUsers + ' People Online.';
+
+                    userLeftDiv.appendChild(usernameSpan);
+                    userLeftDiv.appendChild(numOnlinePeopleSpan);
+
+                    li.setAttribute('class', 'userLeft');
+                    li.appendChild(userLeftDiv);
+                    messageUl.appendChild(li);
+                    messageUl.scrollTop = messageUl.scrollHeight;
+
+                }
+            }
+
+
+            const addTyping = (username) => {
+                var usernameSpan = document.createElement("span");
+                var li = document.createElement("li");
+
+                usernameSpan.innerHTML = username + ' is typing.';
+
+                li.setAttribute('id', 'typing');
+
+
+                li.setAttribute('class', 'typing');
+                li.appendChild(usernameSpan);
+                messageUl.appendChild(li);
+                messageUl.scrollTop = messageUl.scrollHeight;
+
+            }
+
+            const removeTyping = () => {
+                var li = document.getElementById('typing');
+                if (li) {
+                    li.parentNode.removeChild(li);
+                }
+            }
+
+            const sendMsg = (message) => {
+                if (connected) {
+                    if (message) {
+                        addChatMessage({
+                            username: username,
+                            message: message
+                        })
+                        socket.emit('new message', message);
+                    }
+                }
+            }
+
+
+            inputMsg.addEventListener('keyup', function (e) {
+
+                if (inputMsg.value) {
+                    socket.emit('typing');
+
+                    if (e.keyCode === 13) {
+                        sendMsg(inputMsg.value);
+                        inputMsg.value = '';
+                        socket.emit('stopped typing');
+                    }
+
+                }
+                else {
+                    socket.emit('stopped typing');
+                }
+            });
+
+
+
+
+            var socket = io();
+
+
+
+            //Client Socket Event Handling
+
+            socket.on('new message', (data) => {
+                if (connected) {
+                    addChatMessage(data);
+                }
+            });
+
+            socket.on('welcome', (data) => {
+                welcome(data);
+            });
+
+            socket.on('user joined', (data) => {
+                userJoined(data);
+            });
+
+            socket.on('user left', (data) => {
+                userLeft(data);
+            })
+
+            socket.on('typing', (username) => {
+                addTyping(username);
+            });
+
+            socket.on('stopped typing', () => {
+                removeTyping();
+            })
+        }());
+    </script>
+</body>
+
+</html>
