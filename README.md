@@ -4,9 +4,9 @@
 
 ### How to use
 Download this repo, navigate command prompt to the download repo location.
-> cd Chat-App-master
-> npm install
-> npm start
+$ cd Chat-App-master
+$ npm install
+$ npm start
 And point your browser to http://localhost:3000.
 
 Features
